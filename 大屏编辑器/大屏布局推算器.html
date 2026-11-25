@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>数字孪生大屏 · 布局推演器</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0A0F18;color:#DDE6F2;font:14px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased;padding:36px 24px 80px}
+.wrap{max-width:1080px;margin:0 auto}
+.hd h1{font-size:19px;font-weight:600;letter-spacing:.2px}
+.hd p{color:#7D8CA3;font-size:13px;margin-top:6px}
+
+.ctrl{margin-top:22px;background:#111825;border:1px solid #1E2A3C;border-radius:12px;padding:18px 20px 16px}
+.row{display:flex;align-items:center;gap:16px}
+.row + .row{margin-top:14px;padding-top:14px;border-top:1px solid #17202E}
+.lab{font-size:12px;color:#7D8CA3;white-space:nowrap;letter-spacing:.5px;flex:none;width:64px}
+input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:4px;background:#1E2A3C;border-radius:2px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#3B82F6;border:2px solid #0A0F18;cursor:pointer}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#3B82F6;border:2px solid #0A0F18;cursor:pointer}
+.num{display:flex;align-items:center;gap:6px;flex:none}
+.num input{width:80px;background:#0D1420;border:1px solid #1E2A3C;color:#DDE6F2;padding:6px 9px;border-radius:6px;font-size:13px;font-family:ui-monospace,Menlo,Consolas,monospace;text-align:right;outline:none}
+.num input:focus{border-color:#3B82F6}
+.num span{font-size:12px;color:#7D8CA3}
+.presets{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.presets .pt{font-size:11px;color:#5E6E85}
+.presets button,.dens button{background:#0D1420;border:1px solid #1E2A3C;color:#8B9AB0;font-size:12px;padding:5px 11px;border-radius:6px;cursor:pointer;font-family:ui-monospace,Menlo,Consolas,monospace;transition:border-color .15s,color .15s}
+.presets button:hover,.dens button:hover{border-color:#2A3A52;color:#DDE6F2}
+.presets button.on,.dens button.on{border-color:#3B82F6;color:#7FB0F5;background:#101B2C}
+.dens{display:flex;gap:8px;align-items:center}
+.dens button{font-family:inherit;font-size:12px;padding:5px 13px}
+#tabs button{padding:5px 15px}
+#tabs button i{font-style:normal;color:#55647B;margin-left:9px;font-size:11px;letter-spacing:.2px}
+#tabs button.on i{color:#6E8CB0}
+.dens .hint{font-size:11px;color:#5E6E85}
+
+.verdict{margin-top:14px;background:#0D1420;border:1px solid #1E2A3C;border-left:3px solid #3B82F6;border-radius:8px;padding:13px 18px}
+.v-line{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.v-tag{font-size:11px;letter-spacing:1px;color:#7FB0F5;background:#12243C;padding:2px 8px;border-radius:4px;white-space:nowrap;flex:none}
+.v-text{font-size:14px}
+.v-meta{font-size:12px;color:#6E7F96;font-family:ui-monospace,Menlo,Consolas,monospace}
+.v-sub{margin-top:8px;font-size:12px;color:#7D8CA3;line-height:1.9}
+.v-sub b{color:#A8C8E8;font-weight:500;font-family:ui-monospace,Menlo,Consolas,monospace}
+.v-alt{margin-top:6px;font-size:12px;color:#5E6E85;font-family:ui-monospace,Menlo,Consolas,monospace}
+
+.panel{margin-top:14px;background:#111825;border:1px solid #2C5580;border-radius:12px;padding:16px 20px 18px}
+.panel-hd{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.plan-name{font-size:14px;font-weight:500}
+.badge{font-size:11px;padding:2px 8px;border-radius:4px;letter-spacing:.3px}
+.b-ok{background:#10281F;color:#4FB98C}
+.b-warn{background:#2A2113;color:#C79A47}
+.b-bad{background:#2A1616;color:#C46A6A}
+.b-rec{background:#12243C;color:#7FB0F5}
+.plan-note{font-size:12px;color:#6E7F96;margin-left:auto;font-family:ui-monospace,Menlo,Consolas,monospace}
+
+.stage-wrap{width:100%;display:flex;justify-content:center}
+.stage{position:relative;background:#0B111C;border:1px solid #22314A;border-radius:4px;overflow:hidden}
+.stage .topbar{position:absolute;left:0;right:0;background:#0D1420;border-bottom:1px solid #1B2739;display:flex;align-items:center;justify-content:center;font-size:10px;color:#44566E;letter-spacing:2px}
+.stage .content{position:absolute;display:flex}
+.blk{position:relative;flex:none;display:flex;min-width:0;border-radius:3px;overflow:hidden}
+.chart-blk{background:#0F1724;border:1px solid #1B2739}
+.chart-blk .grid{display:grid;flex:1;min-width:0;min-height:0}
+.mini{background:#182234;border:1px solid #2B3D56;border-radius:2px;min-width:0}
+.three{background:#13243A;border:1px solid #2C5580}
+.three .lbl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:10px;color:#7FA8D4;letter-spacing:1px;text-align:center;pointer-events:none}
+.three .lbl b{font-size:12px;font-weight:500;color:#A8C8E8;font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:0}
+.empty{padding:44px 20px;text-align:center;font-size:12px;color:#5E6E85}
+
+.facts{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:#1B2739;border:1px solid #1B2739;border-radius:8px;overflow:hidden;margin-top:14px}
+.fact{background:#0F1724;padding:10px 12px;min-width:0}
+.fk{display:block;font-size:11px;color:#6E7F96;letter-spacing:.3px;white-space:nowrap}
+.fv{display:block;font-size:13px;margin-top:3px;font-family:ui-monospace,Menlo,Consolas,monospace;white-space:nowrap}
+.fv small{color:#5E6E85;font-size:11px}
+.fv em{font-style:normal;color:#C79A47;font-size:11px}
+
+.theory{margin-top:30px;background:#0D1420;border:1px solid #1E2A3C;border-radius:12px;padding:18px 22px 20px}
+.theory h2{font-size:14px;font-weight:500}
+.theory p{font-size:13px;color:#9BABC0;margin-top:10px}
+.theory .fml{margin-top:12px;background:#0A0F18;border:1px solid #17202E;border-radius:8px;padding:12px 14px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:#A8C8E8;line-height:2}
+.theory .fml i{font-style:normal;color:#5E6E85}
+.foot{margin-top:24px;font-size:11px;color:#48586E;line-height:1.9;border-top:1px solid #161F2D;padding-top:14px}
+
+@media (max-width:820px){
+  .tabs{grid-template-columns:1fr}
+  .facts{grid-template-columns:repeat(3,1fr)}
+  body{padding:24px 16px 56px}
+  .lab{width:auto}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hd">
+    <h1>数字孪生大屏 · 布局推演器</h1>
+    <p>屏高 900 固定。宽度决定观看距离，观看距离决定卡片该多大——不是反过来。</p>
+  </header>
+
+  <section class="ctrl">
+    <div class="row">
+      <div class="lab">屏宽 W</div>
+      <input type="range" id="wRange" min="1600" max="4000" step="1" value="2400">
+      <div class="num"><input type="number" id="wNum" min="1600" max="4000" step="1" value="2400"><span>px</span></div>
+    </div>
+    <div class="row">
+      <div class="lab">布局</div>
+      <div class="dens" id="tabs">
+        <button data-type="A">A 型<i>图表—三维—图表</i></button>
+        <button data-type="B">B 型<i>三维 + 图表</i></button>
+      </div>
+    </div>
+    <div class="row">
+      <div class="lab">密度</div>
+      <div class="dens" id="dens">
+        <button data-t="3">紧凑 · 3 行</button>
+        <button data-t="2">宽松 · 2 行</button>
+        <span class="hint" id="densHint"></span>
+      </div>
+    </div>
+    <div class="row">
+      <div class="lab">常用</div>
+      <div class="presets" id="presets">
+        <button data-w="1600">1600</button>
+        <button data-w="1920">1920</button>
+        <button data-w="2400">2400</button>
+        <button data-w="2880">2880</button>
+        <button data-w="3200">3200</button>
+        <button data-w="3600">3600</button>
+        <button data-w="4000">4000</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="verdict">
+    <div class="v-line">
+      <span class="v-tag">推算</span>
+      <span class="v-text" id="vText"></span>
+      <span class="v-meta" id="vMeta"></span>
+    </div>
+    <div class="v-sub" id="vSub"></div>
+    <div class="v-alt" id="vAlt"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-hd">
+      <span class="plan-name" id="planName"></span>
+      <span class="badge" id="badge"></span>
+      <span class="plan-note" id="note"></span>
+    </div>
+    <div class="stage-wrap"><div class="stage" id="stage"></div></div>
+    <div class="facts" id="facts"></div>
+  </section>
+
+  <section class="theory">
+    <h2>为什么宽屏要放大卡片，而不是加列</h2>
+    <p>看清全屏的前提是把整块屏收进视野锥。人眼舒适水平视角约 30°，屏越宽，人必须退得越远。距离一远，每张卡在视网膜上的张角就变小——所以卡片的物理尺寸必须跟着屏宽一起长。</p>
+    <div class="fml">
+      DHR = D / H<sub>s</sub> ≈ 1.59 × (W / H)　　<i>观看距离与屏高之比</i><br>
+      最小字号 ≈ H × 0.005 × DHR　　<i>900 高屏：DHR 4 时约 18px，DHR 7 时约 32px</i><br>
+      卡片张角 α = 卡宽 / D　　<i>要保持 α 不变，卡宽必须 ∝ 屏宽</i>
+    </div>
+    <p>结论：屏宽从 1600 涨到 4000，DHR 从 2.8 涨到 7.1，翻 2.5 倍。卡片尺寸该跟着放大约 2.5 倍；如果不同步放大而是一味加列，就是让观众在 20 米外读 12px 的字。</p>
+  </section>
+
+  <div class="foot">
+    常量：屏高 <code>H=900</code>，区间距 <code>24</code>，图表区内边距 <code>16</code>，列间距 <code>16</code>，顶栏 <code>80</code>，内容高 <code>772</code>，竖向可用 <code>740</code>。<br>
+    行数由卡高决定：<code>m = floor(756 / (卡高 + 16))</code>；列数由卡宽比例决定，取最接近 1.5:1 的解。
+  </div>
+
+</div>
+
+<script>
+var H = 900, TOP = 80, GAP = 24, COL_GAP = 16, CHART_PAD = 16;
+var CONTENT_H = 772, VSPACE = 740;
+
+var TIERS = {
+  3: {name:'紧凑', cardH:236, m:3},
+  2: {name:'宽松', cardH:362, m:2}
+};
+
+function dhrOf(W){ return (W / H) * 1.59; }
+function autoTier(W){ return dhrOf(W) <= 4.4 ? 3 : 2; }
+
+function pickCols(avail, cardH){
+  var best = null;
+  for (var n = 1; n <= 4; n++){
+    var cw = (avail - (n - 1) * COL_GAP) / n;
+    if (cw < 236) break;
+    var r = cw / cardH;
+    var score = Math.abs(r - 1.5);
+    if (r < 0.86) score += (0.86 - r) * 4;
+    if (!best || score < best.score) best = {n:n, cw:cw, ratio:r, score:score};
+  }
+  return best;
+}
+
+function finalize(o, cardH, m, avail){
+  if (!o) return null;
+  var pick = pickCols(avail, cardH);
+  if (!pick) return null;
+  o.n = pick.n;
+  o.cw = pick.cw;
+  o.ratio = pick.ratio;
+  o.cardH = cardH;
+  o.m = m;
+  o.ratioOk = (pick.ratio >= 1.0 && pick.ratio <= 1.9);
+  o.fontTitle = Math.round(cardH * 0.115);
+  o.fontValue = Math.round(cardH * 0.20);
+  o.fontAxis = Math.round(cardH * 0.07);
+  return o;
+}
+
+function solveA(W, tier){
+  var t = TIERS[tier];
+  var Lmax = Math.min((W - 980) / 2, W * 0.25);
+  if (Lmax < 290) return null;
+  var C = W - 2 * Lmax - 80;
+  if (C < 900) return null;
+  var o = {type:'A', W:W, L:Lmax, C:C, chartW:2*Lmax,
+    total:0, ratio3d:C/CONTENT_H, ratioChart:2*Lmax/W};
+  if (!finalize(o, t.cardH, t.m, Lmax - 32)) return null;
+  o.total = 2 * o.n * o.m;
+  o.ok = (C >= 900 && o.ratioOk);
+  return o;
+}
+
+function solveB(W, tier){
+  var t = TIERS[tier];
+  var C = Math.max(900, W - 924);
+  var T = W - 56 - C;
+  if (T < 262) return null;
+  var o = {type:'B', W:W, L:0, C:C, T:T, chartW:T,
+    total:0, ratio3d:C/CONTENT_H, ratioChart:T/W};
+  if (!finalize(o, t.cardH, t.m, T - 32)) return null;
+  o.total = o.n * o.m;
+  o.ok = (o.ratioOk && C / CONTENT_H <= 2.6);
+  return o;
+}
+
+function fmt(v){ return Math.round(v); }
+function pair(w,h){ return fmt(w) + '×' + fmt(h); }
+
+function badgeClass(kind){
+  if (kind === 'rec') return 'badge b-rec';
+  if (kind === 'ok') return 'badge b-ok';
+  if (kind === 'warn') return 'badge b-warn';
+  return 'badge b-bad';
+}
+function grade3d(r){
+  if (r <= 2.0) return 'ok';
+  if (r <= 2.6) return 'warn';
+  return 'bad';
+}
+
+function drawStage(el, s, W){
+  if (!s){
+    el.style.width = '100%';
+    el.style.height = 'auto';
+    el.innerHTML = '<div class="empty">该密度在当前宽度下无法成立，请切换密度档</div>';
+    return;
+  }
+  var avail = el.parentElement.clientWidth - 2;
+  var maxH = 340;
+  var w = Math.min(avail, maxH * W / H);
+  var h = w * H / W;
+  var k = w / W;
+  el.style.width = w + 'px';
+  el.style.height = h + 'px';
+
+  var chromeTop = '<div class="topbar" style="top:' + (16*k) + 'px;height:' + (TOP*k) + 'px">标题栏 ' + TOP + '</div>';
+
+  function chartBlock(px){
+    var pad = CHART_PAD * k, gp = COL_GAP * k;
+    var cards = '';
+    for (var i = 0; i < s.n * s.m; i++){ cards += '<div class="mini"></div>'; }
+    return '<div class="blk chart-blk" style="width:' + px + 'px">' +
+      '<div class="grid" style="padding:' + pad + 'px;gap:' + gp + 'px;' +
+      'grid-template-columns:repeat(' + s.n + ',1fr);grid-template-rows:repeat(' + s.m + ',1fr)">' + cards + '</div></div>';
+  }
+
+  function threeBlock(px){
+    var unit = Math.max(10, 26 * k);
+    var lbl = (px > 62)
+      ? '<div class="lbl">三维建模<b>' + pair(s.C, CONTENT_H) + '</b></div>' : '';
+    return '<div class="blk three" style="width:' + px + 'px;' +
+      'background-image:linear-gradient(#1B3350 1px,transparent 1px),linear-gradient(90deg,#1B3350 1px,transparent 1px);' +
+      'background-size:' + unit + 'px ' + unit + 'px">' + lbl + '</div>';
+  }
+
+  var gapPx = GAP * k;
+  var inner = '';
+  if (s.type === 'A'){
+    inner = chartBlock(s.L * k) + '<div style="width:' + gapPx + 'px;flex:none"></div>' +
+      threeBlock(s.C * k) + '<div style="width:' + gapPx + 'px;flex:none"></div>' + chartBlock(s.L * k);
+  } else {
+    inner = threeBlock(s.C * k) + '<div style="width:' + gapPx + 'px;flex:none"></div>' + chartBlock(s.T * k);
+  }
+
+  el.innerHTML = chromeTop +
+    '<div class="content" style="top:' + ((TOP + 32) * k) + 'px;left:' + (16*k) + 'px;' +
+    'right:' + (16*k) + 'px;bottom:' + (16*k) + 'px">' + inner + '</div>';
+}
+
+function factHTML(k, v){
+  return '<div class="fact"><span class="fk">' + k + '</span><span class="fv">' + v + '</span></div>';
+}
+
+var state = {W:2400, tier:3, manual:false, type:'A'};
+
+function describe(s){
+  if (!s) return '不可行';
+  return s.total + ' 张，单卡 ' + pair(s.cw, s.cardH) + '，比例 ' + s.ratio.toFixed(2);
+}
+
+function render(){
+  var W = state.W;
+  var sA = solveA(W, state.tier);
+  var sB = solveB(W, state.tier);
+  var cur = state.type === 'A' ? sA : sB;
+  var other = state.type === 'A' ? sB : sA;
+
+  var nameEl = document.getElementById('planName');
+  nameEl.textContent = state.type === 'A'
+    ? 'A 型 · 图表 — 三维 — 图表'
+    : 'B 型 · 三维 + 图表';
+
+  var bEl = document.getElementById('badge');
+  if (!cur){ bEl.className = badgeClass('bad'); bEl.textContent = '不可行'; }
+  else if (!cur.ratioOk){ bEl.className = badgeClass('warn'); bEl.textContent = '比例失衡'; }
+  else if (grade3d(cur.ratio3d) === 'bad'){ bEl.className = badgeClass('warn'); bEl.textContent = '三维过宽'; }
+  else { bEl.className = badgeClass('rec'); bEl.textContent = '可用'; }
+
+  document.getElementById('note').textContent = cur
+    ? (cur.total + ' 张 · 卡比例 ' + cur.ratio.toFixed(2) + ' · 图表占屏 ' + (cur.ratioChart*100).toFixed(0) + '%')
+    : '';
+
+  drawStage(document.getElementById('stage'), cur, W);
+
+  var factsEl = document.getElementById('facts');
+  if (!cur){
+    factsEl.innerHTML = factHTML('状态', '<em>当前宽度放不下</em>');
+  } else {
+    var isA = cur.type === 'A';
+    var h = '';
+    h += factHTML('三维区', pair(cur.C, CONTENT_H));
+    h += factHTML('图表区', pair(cur.chartW, CONTENT_H));
+    h += factHTML(isA ? '每侧列×行' : '列×行', isA ? (cur.n + '×' + cur.m + ' ×2') : (cur.n + '×' + cur.m));
+    h += factHTML('单卡尺寸', pair(cur.cw, cur.cardH) + (cur.ratioOk ? '' : '<em> 失衡</em>'));
+    h += factHTML('字号 标题/数值', cur.fontTitle + ' / ' + cur.fontValue);
+    h += factHTML('图表总数', cur.total + ' 张');
+    factsEl.innerHTML = h;
+  }
+
+  var dhr = dhrOf(W);
+  var vt = document.getElementById('vText');
+  if (cur){
+    vt.innerHTML = 'W=' + W + '，<b>' + TIERS[state.tier].name + '</b>档（' + TIERS[state.tier].m + ' 行），' +
+      (cur.type === 'A' ? 'A 型 ' + cur.n + '×' + cur.m + '，共 ' : 'B 型 ' + cur.n + '×' + cur.m + '，共 ') +
+      cur.total + ' 张，单卡 ' + pair(cur.cw, cur.cardH) + '。';
+  } else {
+    vt.innerHTML = 'W=' + W + ' 在 ' + TIERS[state.tier].name + '档下没有可行解，请切换密度。';
+  }
+  document.getElementById('vMeta').textContent = 'DHR ' + dhr.toFixed(1) + '× 屏高';
+
+  var dist = (dhr * 3).toFixed(1);
+  var fmin = Math.round(H * 0.005 * dhr);
+  document.getElementById('vSub').innerHTML =
+    '观看距离 ≈ <b>' + dhr.toFixed(1) + '</b> 倍屏高（屏高 3m 时约 <b>' + dist + 'm</b>）；' +
+    '该距离下最小可读字号约 <b>' + fmin + 'px</b>，卡片宽高比宜落在 <b>1.0–1.9</b>；' +
+    '自动建议 <b>' + TIERS[autoTier(W)].name + '</b>档。';
+
+  document.getElementById('vAlt').textContent =
+    (state.type === 'A' ? 'B 型同条件：' : 'A 型同条件：') + describe(other);
+
+  syncUI(W);
+}
+
+function syncUI(W){
+  var pbs = document.querySelectorAll('#presets button');
+  for (var i = 0; i < pbs.length; i++){
+    pbs[i].className = (parseInt(pbs[i].getAttribute('data-w'), 10) === W) ? 'on' : '';
+  }
+  var dbs = document.querySelectorAll('#dens button');
+  for (var j = 0; j < dbs.length; j++){
+    dbs[j].className = (parseInt(dbs[j].getAttribute('data-t'), 10) === state.tier) ? 'on' : '';
+  }
+  var tbs = document.querySelectorAll('#tabs button');
+  for (var t = 0; t < tbs.length; t++){
+    tbs[t].className = (tbs[t].getAttribute('data-type') === state.type) ? 'on' : '';
+  }
+  var at = autoTier(W);
+  document.getElementById('densHint').textContent =
+    'DHR ' + dhrOf(W).toFixed(1) + '，自动建议 ' + TIERS[at].name + (at === state.tier ? '（已命中）' : '');
+}
+
+var range = document.getElementById('wRange');
+var num = document.getElementById('wNum');
+
+range.addEventListener('input', function(){
+  state.W = parseInt(range.value, 10);
+  num.value = state.W;
+  if (!state.manual) state.tier = autoTier(state.W);
+  render();
+});
+
+num.addEventListener('input', function(){
+  var v = parseInt(num.value, 10);
+  if (isNaN(v)) return;
+  v = Math.max(1600, Math.min(4000, v));
+  state.W = v; range.value = v;
+  if (!state.manual) state.tier = autoTier(v);
+  render();
+});
+
+num.addEventListener('blur', function(){
+  var v = parseInt(num.value, 10);
+  if (isNaN(v)) v = 2400;
+  v = Math.max(1600, Math.min(4000, v));
+  num.value = v; range.value = v; state.W = v;
+  render();
+});
+
+document.querySelectorAll('#presets button').forEach(function(b){
+  b.addEventListener('click', function(){
+    var v = parseInt(this.getAttribute('data-w'), 10);
+    state.W = v; num.value = v; range.value = v;
+    if (!state.manual) state.tier = autoTier(v);
+    render();
+  });
+});
+
+document.querySelectorAll('#dens button').forEach(function(b){
+  b.addEventListener('click', function(){
+    state.tier = parseInt(this.getAttribute('data-t'), 10);
+    state.manual = true;
+    render();
+  });
+});
+
+document.querySelectorAll('#tabs button').forEach(function(b){
+  b.addEventListener('click', function(){
+    state.type = this.getAttribute('data-type');
+    render();
+  });
+});
+
+window.addEventListener('resize', render);
+state.tier = autoTier(state.W);
+render();
+</script>
+</body>
+</html>

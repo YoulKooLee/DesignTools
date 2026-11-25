@@ -1,0 +1,13 @@
+# 交给 core.autocrlf 统一处理换行（本机为 true：入库 LF，检出 CRLF）
+* text=auto
+
+# 二进制，禁止任何换行转换
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.pdf   binary
+*.xlsx  binary
+*.docx  binary
+*.zip   binary

@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>图表设计 · 三入口结构设计稿</title>
+<style>
+:root{
+  --bg:#06121f; --panel:#0a1929; --card:#0d2137; --line:#1a3a5c; --line2:#16324e;
+  --accent:#4fc3f7; --blue:#1976d2; --text:#e3edf5; --muted:#7c96ab; --dim:#546e7a;
+  --ok:#4db6ac; --warn:#ffb74d; --danger:#ef9a9a;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+.stage{position:relative;height:100%;display:flex;align-items:center;justify-content:center;padding:22px}
+.stage::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(79,195,247,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(79,195,247,.045) 1px,transparent 1px);background-size:48px 48px}
+.ghost-screen{position:absolute;inset:24px;border:1px solid #10263c;border-radius:14px;overflow:hidden;opacity:.5}
+.ghost-bar{height:44px;border-bottom:1px solid #10263c;background:#081726;display:flex;align-items:center;padding:0 18px;gap:10px}
+.ghost-dot{width:8px;height:8px;border-radius:50%;background:#17324c}
+.ghost-title{width:180px;height:8px;border-radius:4px;background:#17324c}
+.ghost-tabs{display:flex;gap:8px;margin-left:24px}
+.ghost-tab{width:64px;height:8px;border-radius:4px;background:#0f2a44}
+.ghost-grid{position:absolute;inset:44px 0 0;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,1fr);gap:14px;padding:16px}
+.ghost-cell{border:1px solid #10263c;border-radius:8px;background:rgba(13,33,55,.35)}
+
+.shell{position:relative;width:1240px;max-width:96vw;height:812px;max-height:92vh;background:var(--card);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.55)}
+.mhead{height:58px;flex:none;display:flex;align-items:center;padding:0 20px;gap:14px;border-bottom:1px solid var(--line);background:#0b1c2e}
+.mhead h1{margin:0;font-size:15px;font-weight:600;letter-spacing:.3px}
+.mhead .sub{font-size:11.5px;color:var(--dim);padding-left:14px;border-left:1px solid var(--line2);line-height:1.5}
+.mhead .sub b{color:#9fc4da;font-weight:600}
+.mhead .grow{flex:1}
+.icon-btn{width:28px;height:28px;border-radius:6px;border:1px solid var(--line2);background:transparent;color:var(--muted);cursor:pointer;font-size:15px;line-height:1}
+.icon-btn:hover{border-color:#ef5350;color:#ef5350}
+
+.mtabs{height:44px;flex:none;display:flex;align-items:stretch;padding:0 12px;gap:2px;background:#081726;border-bottom:1px solid var(--line)}
+.mtab{border:none;background:none;color:var(--muted);font-family:inherit;font-size:13px;padding:0 18px;cursor:pointer;border-bottom:2px solid transparent;display:flex;align-items:center;gap:7px}
+.mtab:hover{color:#9fc9e8}
+.mtab.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.cnt{font-style:normal;font-size:10px;padding:1px 6px;border-radius:9px;background:#17324c;color:#8fb6d0;font-weight:400}
+.mtab.on .cnt{background:rgba(79,195,247,.16);color:var(--accent)}
+
+.mbody{flex:1;min-height:0;display:flex;flex-direction:column;padding:14px 18px;gap:12px;overflow:hidden}
+.pane{display:none;flex-direction:column;gap:12px;min-height:0;flex:1}
+.pane.on{display:flex}
+
+.bar{display:flex;align-items:center;gap:10px;flex:none}
+.search{flex:1;min-width:0;position:relative;display:flex;align-items:center}
+.search svg{position:absolute;left:9px;width:13px;height:13px;stroke:#4d6b84;fill:none;stroke-width:1.6}
+.search input{width:100%;height:32px;padding:0 10px 0 28px;font-family:inherit;font-size:12px;background:#081726;border:1px solid var(--line2);border-radius:6px;color:var(--text)}
+.search input:focus{outline:none;border-color:var(--blue)}
+.search input::placeholder{color:#47637a}
+.sel{height:32px;padding:0 8px;font-family:inherit;font-size:12px;color:#c6d8e6;background:#081726;border:1px solid var(--line2);border-radius:6px;width:140px;flex:none}
+.seg{display:flex;flex:none;background:#081726;border:1px solid var(--line2);border-radius:6px;padding:2px;height:32px}
+.seg button{border:none;background:none;color:var(--muted);font-family:inherit;font-size:12px;padding:0 12px;border-radius:4px;cursor:pointer}
+.seg button.on{background:#17324c;color:#d7ecfa}
+.bar-right{flex:none;font-size:11px;color:#48657d}
+
+.listwrap{flex:1;min-height:0;display:flex;flex-direction:column;border:1px solid var(--line2);border-radius:9px;background:var(--panel);overflow:hidden}
+.thead{display:flex;align-items:center;height:30px;flex:none;background:#081726;border-bottom:1px solid var(--line2);font-size:10.5px;color:#5d7c93;letter-spacing:.4px;padding:0 12px 0 6px}
+.thead .h-sw{width:44px;flex:none;text-align:center}
+.thead .h-main{flex:1;min-width:0;padding-left:16px}
+.thead .h-pos{width:92px;flex:none}
+.thead .h-forms{width:240px;flex:none}
+.thead .h-ops{width:86px;flex:none;text-align:right}
+.rows{flex:1;min-height:0;overflow-y:auto}
+.rows::-webkit-scrollbar{width:8px}
+.rows::-webkit-scrollbar-thumb{background:#17324c;border-radius:4px}
+
+.grp{display:flex;align-items:center;gap:9px;padding:8px 12px 8px 14px;background:#0b1c2e;border-top:1px solid #16324e;border-bottom:1px solid #16324e;position:sticky;top:0;z-index:2}
+.grp.first{border-top:none}
+.grp-t{font-size:11.5px;color:#9fc9e8;font-weight:600;display:flex;align-items:center;gap:6px}
+.grp-t i{font-style:normal;font-size:10px;color:#6d8ba3;background:#102a44;border-radius:8px;padding:1px 6px}
+.grp-sub{font-size:10.5px;color:#4d6b84}
+.grp .grow{flex:1}
+.link{background:none;border:none;color:#6fb8d8;font-size:11px;cursor:pointer;padding:0;font-family:inherit}
+.link:hover{color:var(--accent)}
+.link.off{color:#3a5468;cursor:default}
+
+.row{display:flex;align-items:center;padding:9px 12px 9px 6px;border-bottom:1px solid #0f2437;position:relative;min-height:60px}
+.row:hover{background:rgba(25,118,210,.09)}
+.row.picked{background:rgba(25,118,210,.13)}
+.row.picked::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--accent)}
+.row.gone{display:none}
+.cell-sw{width:44px;flex:none;display:flex;justify-content:center}
+.cell-main{flex:1;min-width:0;padding-left:16px}
+.cell-pos{width:92px;flex:none;padding-left:0}
+.pos-tag{font-size:10px;color:#8fb6d0;background:#102a44;border:1px solid #1c3d5c;border-radius:4px;padding:2px 7px;font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.3px}
+.pos-tag.kpi{color:#ffcc80;border-color:#4a3a22;background:#2a2114}
+.pos-none{font-size:10.5px;color:#3f5a70}
+.cell-forms{width:240px;flex:none;display:flex;flex-wrap:wrap;gap:5px;justify-content:flex-start}
+.cell-ops{width:86px;flex:none;display:flex;justify-content:flex-end}
+
+.switch{width:32px;height:18px;border-radius:9px;border:1px solid #24405c;background:#102a44;position:relative;cursor:pointer;padding:0;transition:background .15s,border-color .15s}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#6b8ba3;transition:transform .15s,background .15s}
+.switch.on{background:rgba(79,195,247,.22);border-color:#3f9cc4}
+.switch.on::after{transform:translateX(14px);background:var(--accent)}
+
+.nm-t{font-size:12.5px;color:#e8f2f9;display:flex;align-items:center;gap:7px;min-width:0;line-height:1.5}
+.nm-t .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mod{font-size:10px;color:#4a657c;flex:none}
+.tag{font-size:9.5px;padding:1px 6px;border-radius:8px;flex:none;letter-spacing:.2px}
+.tag.custom{background:#3a2a1d;color:#ffb74d}
+.tag.demo{background:#152f45;color:#7fa5bf}
+.nm-m{font-size:10.5px;color:#5e7a90;margin-top:3px;display:flex;align-items:center;gap:7px;overflow:hidden;white-space:nowrap}
+.nm-m .seg-dot{color:#2f4a60}
+.dpills{display:inline-flex;align-items:center;gap:4px;flex:none}
+.dpill{font-size:10px;padding:1px 7px;border-radius:9px;background:#102a44;color:#8fb6d0;border:1px solid #1c3d5c}
+.dx{font-size:9.5px;color:#3f5a70}
+
+.chip{font-family:inherit;font-size:10.5px;padding:3px 9px;border-radius:11px;cursor:pointer;background:transparent;color:#7d99b0;border:1px solid #24405c;white-space:nowrap;line-height:1.45}
+.chip:hover{border-color:#3d7fa8;color:#cfe6f8}
+.chip.on{background:rgba(79,195,247,.16);border-color:#3f9cc4;color:#7fd4ff;font-weight:600}
+.chip.dimmed{opacity:.42;cursor:not-allowed}
+
+.op{background:none;border:none;font-family:inherit;font-size:11px;color:#7d99b0;cursor:pointer;padding:3px 6px;border-radius:4px}
+.op:hover{background:#17324c;color:#cfe6f8}
+.op.del:hover{background:#4a1f28;color:#ef9a9a}
+
+.lfoot{flex:none;display:flex;align-items:center;gap:12px;padding:0 14px;height:34px;background:#081726;border-top:1px solid #0f2437;font-size:10.5px;color:#4d6b84}
+.lfoot .grow{flex:1}
+.empty{padding:38px 0;text-align:center;font-size:12px;color:#4d6b84}
+
+.mfoot{height:56px;flex:none;display:flex;align-items:center;gap:20px;padding:0 20px;border-top:1px solid var(--line);background:#0b1c2e}
+.meter{display:flex;align-items:center;gap:9px;font-size:11.5px;color:var(--muted)}
+.meter b{color:#cfe6f8;font-weight:600;font-size:12px}
+.meter .track{width:92px;height:5px;border-radius:3px;background:#102a44;overflow:hidden}
+.meter .fill{height:100%;background:var(--accent);border-radius:3px}
+.meter .fill.warn{background:var(--warn)}
+.mfoot .grow{flex:1}
+.btn{font-family:inherit;font-size:12px;padding:7px 16px;border-radius:6px;cursor:pointer;border:1px solid transparent}
+.btn.primary{background:var(--blue);color:#fff}
+.btn.primary:hover{background:#1a86e0}
+.btn.ghost{background:#17324c;color:#9fc9e8;border-color:#24507a}
+.btn.ghost:hover{background:#1e4166}
+.btn.sm{padding:4px 11px;font-size:11px}
+.btn.danger{background:#4a1f28;color:#ef9a9a;border-color:#6b2b36}
+.btn.danger:hover{background:#5c2632}
+
+.card{background:var(--panel);border:1px solid var(--line2);border-radius:9px;padding:13px 15px;flex:none}
+.card h4{margin:0 0 11px;font-size:12.5px;color:#7fd4ff;font-weight:600;display:flex;align-items:center;gap:8px}
+.card h4 .hint{font-size:10.5px;color:#4d6b84;font-weight:400}
+.form-row{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+.form-row:last-child{margin-bottom:0}
+.form-row>label{width:76px;flex:none;font-size:12px;color:#8aa7bd}
+.inp{height:32px;padding:0 10px;font-family:inherit;font-size:12px;color:var(--text);background:#081726;border:1px solid var(--line2);border-radius:6px;width:100%;min-width:0}
+.inp:focus{outline:none;border-color:var(--blue)}
+.inp.sm{width:auto;flex:none}
+
+.pv-screen{border:1px solid #17395a;border-radius:10px;background:linear-gradient(180deg,#0a2338,#071a2a);padding:13px 16px;display:flex;flex-direction:column;gap:12px;flex:1;min-height:150px}
+.pv-top{display:flex;align-items:center;gap:14px}
+.pv-title{font-size:15px;font-weight:600;color:#dff1fd;letter-spacing:1.2px}
+.pv-menus{display:flex;gap:6px;margin-left:auto}
+.pv-menu{font-size:10.5px;color:#7fa5bf;border:1px solid #1e4467;border-radius:4px;padding:3px 11px;white-space:nowrap}
+.pv-menu.on{color:#062033;background:var(--accent);border-color:var(--accent);font-weight:600}
+.pv-grid{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.pv-cell{border:1px solid #14314b;border-radius:6px;background:rgba(13,33,55,.5);position:relative;overflow:hidden}
+.pv-cell::before{content:"";position:absolute;left:10px;top:10px;width:52px;height:5px;border-radius:3px;background:#1b4262}
+.pv-bars{position:absolute;left:10px;right:10px;top:32px;bottom:12px;display:flex;align-items:flex-end;gap:5px}
+.pv-bars i{flex:1;background:#1d4a6d;border-radius:2px 2px 0 0}
+.pv-bars i.hi{background:#2b6f9c}
+.text-cols{display:grid;grid-template-columns:minmax(0,1fr) 288px;gap:12px;align-items:stretch;flex:1;min-height:0}
+.text-cols .stack{display:flex;flex-direction:column;gap:12px;min-height:0}
+.text-cols .stack>.card:first-child{flex:1;display:flex;flex-direction:column;min-height:160px}
+.text-cols>.card{height:100%;display:flex;flex-direction:column}
+.tip-list{margin:0;padding:0;list-style:none;font-size:11px;color:#7c96ab;line-height:1.9}
+.tip-list li{padding-left:14px;position:relative}
+.tip-list li::before{content:"";position:absolute;left:2px;top:8px;width:4px;height:4px;border-radius:50%;background:#2f5d7d}
+.tip-list b{color:#a8c9dd;font-weight:500}
+
+.ds-tbl{width:100%;border-collapse:collapse;font-size:11.5px}
+.ds-tbl th,.ds-tbl td{border-bottom:1px solid #12293f;padding:8px;text-align:left;white-space:nowrap}
+.ds-tbl th{background:#081726;color:#5d7c93;font-weight:600;font-size:10.5px;letter-spacing:.3px}
+.ds-tbl td{color:#b7cddd}
+.ds-tbl tr:hover td{background:rgba(25,118,210,.07)}
+
+.drop{border:1px dashed #2a4d6e;border-radius:8px;padding:0;height:104px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:rgba(15,42,68,.35);color:#6d8ba3;font-size:11px;text-align:center}
+.drop b{color:#9fc9e8;font-weight:600;display:block;font-size:12.5px}
+.drop .or{color:#3f5a70;font-size:10px;margin:2px 0}
+.danger-zone{display:flex;align-items:center;gap:12px;padding:10px 15px;border:1px solid #3d2029;border-radius:9px;background:rgba(74,31,40,.22)}
+.danger-zone .tx{font-size:11px;color:#a97b82;flex:1}
+
+.crumb{display:flex;align-items:center;gap:8px;font-size:12px;color:#6d8ba3;flex:none}
+.crumb button{background:none;border:none;color:#6fb8d8;font-family:inherit;font-size:12px;cursor:pointer;padding:0}
+.crumb button:hover{color:var(--accent)}
+.crumb .sep{color:#33506b}
+.crumb .cur{color:#d7ecfa;font-weight:600}
+
+.stepper{display:flex;flex:none;background:#081726;border:1px solid var(--line2);border-radius:8px;overflow:hidden}
+.stp{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px 6px;position:relative;font-size:11.5px;color:#5d7c93;cursor:pointer;white-space:nowrap}
+.stp+.stp::before{content:"";position:absolute;left:0;top:22%;height:56%;width:1px;background:#12314c}
+.stp .n{width:17px;height:17px;border-radius:50%;border:1px solid #24405c;display:flex;align-items:center;justify-content:center;font-size:9.5px;flex:none}
+.stp:hover{color:#9fc9e8}
+.stp.on{color:var(--accent);background:rgba(79,195,247,.08);box-shadow:inset 0 -2px 0 var(--accent)}
+.stp.on .n{border-color:var(--accent)}
+.stp.done{color:var(--ok)}
+.stp.done .n{border-color:#2c6a5f;color:var(--ok)}
+
+.wiz-body{flex:1;min-height:0;overflow-y:auto}
+.wiz-cols{display:grid;grid-template-columns:minmax(0,1fr) 288px;gap:12px;align-items:start}
+.wiz-foot{display:flex;align-items:center;gap:10px;flex:none}
+.wiz-foot .grow{flex:1}
+.sum-row{display:flex;gap:10px;padding:7px 0;border-bottom:1px dashed #12293f;font-size:11.5px}
+.sum-row:last-of-type{border-bottom:none}
+.sum-row span{width:56px;flex:none;color:#5d7c93}
+.sum-row b{color:#c8dcea;font-weight:500;overflow:hidden;text-overflow:ellipsis}
+.sum-row.act b{color:#7fd4ff}
+.sum-note{margin-top:9px;font-size:10.5px;color:#4d6b84;line-height:1.7}
+
+.grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.roles{width:100%;border-collapse:collapse;font-size:11.5px}
+.roles th,.roles td{border-bottom:1px solid #12293f;padding:7px 8px;text-align:left;color:#b7cddd}
+.roles th{color:#5d7c93;font-weight:600;font-size:10.5px}
+.roles select{height:26px;font-size:11px;background:#081726;color:#cfe6f8;border:1px solid var(--line2);border-radius:4px;padding:0 6px;font-family:inherit}
+.hintline{font-size:10.5px;color:#4d6b84;line-height:1.75;margin-top:9px}
+.hintline.warn{color:var(--warn)}
+.tbl-narrow{max-width:640px}
+
+.toast{position:fixed;left:50%;bottom:32px;transform:translate(-50%,12px);background:#12324c;border:1px solid #2a5f86;color:#dff1fd;font-size:12px;padding:9px 18px;border-radius:20px;opacity:0;pointer-events:none;transition:.18s;z-index:9}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="ghost-screen">
+    <div class="ghost-bar"><div class="ghost-dot"></div><div class="ghost-title"></div>
+      <div class="ghost-tabs"><div class="ghost-tab"></div><div class="ghost-tab"></div><div class="ghost-tab"></div></div>
+    </div>
+    <div class="ghost-grid">
+      <div class="ghost-cell"></div><div class="ghost-cell"></div><div class="ghost-cell"></div><div class="ghost-cell"></div>
+      <div class="ghost-cell"></div><div class="ghost-cell"></div><div class="ghost-cell"></div><div class="ghost-cell"></div>
+    </div>
+  </div>
+
+  <div class="shell">
+    <div class="mhead">
+      <h1>图表设计</h1>
+      <div class="sub">图表位 <b id="h-chart">4/12</b>　·　KPI 位 <b id="h-kpi">1/3</b>　·　已上屏 <b id="h-on">5</b> 个指标</div>
+      <div class="grow"></div>
+      <button class="icon-btn" title="关闭">×</button>
+    </div>
+
+    <div class="mtabs">
+      <button class="mtab" data-tab="text" onclick="tab('text')">文案配置</button>
+      <button class="mtab" data-tab="data" onclick="tab('data')">数据管理<i class="cnt">8</i></button>
+      <button class="mtab on" data-tab="ind" onclick="tab('ind')">指标管理<i class="cnt" id="tab-ind-cnt">6</i></button>
+    </div>
+
+    <div class="mbody">
+      <!-- 文案配置 -->
+      <section class="pane" id="pane-text">
+        <div class="text-cols">
+          <div class="stack">
+            <div class="card">
+              <h4>大屏预览<span class="hint">标题与菜单会直接渲染到大屏顶部</span></h4>
+              <div class="pv-screen">
+                <div class="pv-top">
+                  <div class="pv-title" id="pv-title">数据可视化大屏设计器</div>
+                  <div class="pv-menus" id="pv-menus">
+                    <div class="pv-menu on">综合态势</div><div class="pv-menu">疾病防控</div><div class="pv-menu">医疗资源</div>
+                  </div>
+                </div>
+                <div class="pv-grid">
+                  <div class="pv-cell"><div class="pv-bars"><i style="height:38%"></i><i class="hi" style="height:72%"></i><i style="height:52%"></i><i style="height:64%"></i><i style="height:44%"></i></div></div>
+                  <div class="pv-cell"><div class="pv-bars"><i style="height:64%"></i><i style="height:46%"></i><i class="hi" style="height:82%"></i><i style="height:56%"></i><i style="height:38%"></i></div></div>
+                  <div class="pv-cell"><div class="pv-bars"><i style="height:46%"></i><i style="height:58%"></i><i style="height:40%"></i><i class="hi" style="height:70%"></i><i style="height:52%"></i></div></div>
+                  <div class="pv-cell"><div class="pv-bars"><i class="hi" style="height:80%"></i><i style="height:54%"></i><i style="height:66%"></i><i style="height:42%"></i><i style="height:58%"></i></div></div>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <h4>文案配置<span class="hint">改动即时预览，点「应用文案」才写入大屏</span></h4>
+              <div class="form-row">
+                <label>大屏标题</label>
+                <input class="inp" style="max-width:460px" id="in-title" value="数据可视化大屏设计器" oninput="document.getElementById('pv-title').textContent=this.value">
+                <span style="font-size:10.5px;color:#4d6b84;flex:none">建议 8–16 字</span>
+              </div>
+              <div class="form-row">
+                <label>菜单个数</label>
+                <div class="seg" style="height:30px">
+                  <button onclick="setMenus(2,this)">2</button>
+                  <button onclick="setMenus(3,this)" class="on">3</button>
+                  <button onclick="setMenus(4,this)">4</button>
+                  <button onclick="setMenus(5,this)">5</button>
+                </div>
+                <span style="font-size:10.5px;color:#4d6b84">大屏顶部页签数量，建议 3–4 个</span>
+              </div>
+              <div class="form-row" style="align-items:flex-start">
+                <label style="padding-top:8px">菜单名称</label>
+                <div class="grid-3" style="flex:1" id="menu-names">
+                  <input class="inp" value="综合态势" oninput="syncMenu()">
+                  <input class="inp" value="疾病防控" oninput="syncMenu()">
+                  <input class="inp" value="医疗资源" oninput="syncMenu()">
+                </div>
+              </div>
+              <div class="form-row" style="margin-top:14px">
+                <label></label>
+                <button class="btn primary" onclick="toast('文案已应用到大屏')">应用文案</button>
+                <button class="btn ghost" onclick="toast('已恢复默认文案')">恢复默认</button>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <h4>当前状态</h4>
+            <div class="sum-row"><span>标题</span><b id="st-title">数据可视化大屏设计器</b></div>
+            <div class="sum-row"><span>菜单</span><b>3 个</b></div>
+            <div class="sum-row"><span>最近应用</span><b>11-24 22:35</b></div>
+            <div class="sum-note" style="margin-bottom:8px">文案保存在本机布局存档里，刷新后仍生效；点「清空全部数据」会一并复位。</div>
+            <div style="flex:1"></div>
+            <h4>填写建议</h4>
+            <ul class="tip-list">
+              <li>标题超过 <b>16 字</b>会在大屏上省略，建议 8–12 字。</li>
+              <li>菜单名控制在 <b>2–5 字</b>，过长会挤压页签。</li>
+              <li>菜单个数与布局里的页签数量联动，改多了会新增空页。</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- 数据管理 -->
+      <section class="pane" id="pane-data">
+        <div class="card">
+          <h4>导入明细事实表<span class="hint">支持 xlsx / csv，导入后到「指标管理」里配指标</span></h4>
+          <div class="grid-3">
+            <div class="drop"><b>上传文件</b>拖拽到此处，或点击选择本地 xlsx / csv</div>
+            <div class="drop"><b>粘贴数据</b>从表格复制粘贴，首行为表头<div class="or">或</div><button class="btn ghost sm" onclick="toast('已打开手动录入')">手动录入</button></div>
+            <div class="drop"><b>示例数据</b>没有数据也能先看效果<div class="or">或</div><button class="btn ghost sm" onclick="toast('已载入示例数据表')">载入示例</button></div>
+          </div>
+        </div>
+        <div class="card" style="flex:1;min-height:0;display:flex;flex-direction:column;padding-bottom:0">
+          <h4>已导入的数据表<span class="hint">8 张 · 共 19,720 行</span></h4>
+          <div style="flex:1;min-height:0;overflow:auto">
+            <table class="ds-tbl">
+              <thead><tr><th style="width:22%">表名</th><th>行数</th><th>列数</th><th>被引用</th><th>来源</th><th>导入时间</th><th style="text-align:right">操作</th></tr></thead>
+              <tbody>
+                <tr><td>门诊明细</td><td>8,240</td><td>9</td><td>1 个指标</td><td>门诊明细.xlsx</td><td>11-23 14:20</td><td style="text-align:right"><button class="op">预览</button><button class="op del">删除</button></td></tr>
+                <tr><td>随访记录</td><td>3,120</td><td>7</td><td>1 个指标</td><td>随访导出.csv</td><td>11-23 15:02</td><td style="text-align:right"><button class="op">预览</button><button class="op del">删除</button></td></tr>
+                <tr><td>社区卫生服务中心</td><td>2,240</td><td>7</td><td>未引用</td><td>社区台账.xlsx</td><td>11-24 09:18</td><td style="text-align:right"><button class="op">预览</button><button class="op del">删除</button></td></tr>
+                <tr><td>发热门诊日报</td><td>1,860</td><td>8</td><td>未引用</td><td>发热日报.xlsx</td><td>11-24 16:41</td><td style="text-align:right"><button class="op">预览</button><button class="op del">删除</button></td></tr>
+                <tr><td>慢病管理台账</td><td>1,640</td><td>10</td><td>未引用</td><td>慢病台账.xlsx</td><td>11-25 09:05</td><td style="text-align:right"><button class="op">预览</button><button class="op del">删除</button></td></tr>
+                <tr><td>疫苗库存</td><td>1,120</td><td>6</td><td>未引用</td><td>手工录入</td><td>11-24 09:30</td><td style="text-align:right"><button class="op">预览</button><button class="op del">删除</button></td></tr>
+                <tr><td>急救调度记录</td><td>920</td><td>8</td><td>未引用</td><td>调度导出.csv</td><td>11-25 09:20</td><td style="text-align:right"><button class="op">预览</button><button class="op del">删除</button></td></tr>
+                <tr><td>检验结果</td><td>580</td><td>11</td><td>未引用</td><td>检验明细.csv</td><td>11-25 08:12</td><td style="text-align:right"><button class="op">预览</button><button class="op del">删除</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="lfoot" style="margin:0 -15px;height:34px">列角色在导入时自动推断，可在「维度计算」第 2 步修正<span class="grow"></span>被指标引用的表删除时会二次确认</div>
+        </div>
+        <div class="danger-zone">
+          <div class="tx">清空全部数据：删除所有导入的数据表、自定义指标与布局存档，页面恢复初始示例。</div>
+          <button class="btn danger" onclick="toast('（演示）清空全部数据')">清空全部数据</button>
+        </div>
+      </section>
+
+      <!-- 指标管理 -->
+      <section class="pane on" id="pane-ind">
+        <div class="bar">
+          <div class="search">
+            <svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"></circle><path d="M10.5 10.5L14 14"></path></svg>
+            <input id="q" placeholder="搜索指标名称 / 模块 / 事实表" oninput="applyFilter()">
+          </div>
+          <select class="sel" onchange="applyFilter()"><option>全部模块</option><option>综合管理</option><option>疾病防控</option><option>示例分组</option></select>
+          <div class="seg"><button class="on" onclick="setOnly(false,this)">全部</button><button onclick="setOnly(true,this)">仅已上屏</button></div>
+          <div class="bar-right">点样式即上屏 · 关闭开关取消</div>
+        </div>
+
+        <div class="listwrap">
+          <div class="thead">
+            <span class="h-sw">上屏</span><span class="h-main">指标 / 口径</span><span class="h-pos">上屏位次</span><span class="h-forms">展示形式</span><span class="h-ops">操作</span>
+          </div>
+          <div class="rows" id="rows">
+            <div class="grp first">
+              <span class="grp-t">自定义指标 <i id="c-custom">2</i></span>
+              <span class="grp-sub">由「维度计算」配置生成</span>
+              <span class="grow"></span>
+              <button class="btn primary sm" onclick="openWiz()">+ 添加指标</button>
+            </div>
+
+            <div class="row picked" data-name="各区域就诊人次 门诊明细 综合管理" data-demo="0">
+              <div class="cell-sw"><button class="switch on" onclick="toggleOn(this)"></button></div>
+              <div class="cell-main">
+                <div class="nm-t"><span class="tag custom">自定义</span><span class="name">各区域就诊人次</span><span class="mod">综合管理</span></div>
+                <div class="nm-m">门诊明细 · 求和 · 就诊人次 · 按月 · 单位 人<span class="seg-dot">|</span><span class="dpills"><span class="dpill">区域</span><span class="dx">×</span><span class="dpill">月份</span></span></div>
+              </div>
+              <div class="cell-pos"><span class="pos-tag" data-pos>图表 01</span></div>
+              <div class="cell-forms">
+                <button class="chip on" onclick="pickChip(this)">分组柱</button>
+                <button class="chip" onclick="pickChip(this)">多系列折线</button>
+                <button class="chip" onclick="pickChip(this)">旭日</button>
+              </div>
+              <div class="cell-ops"><button class="op" onclick="openWiz(true)">编辑</button><button class="op del" onclick="delRow(this)">删除</button></div>
+            </div>
+
+            <div class="row picked" data-name="慢病随访完成率 随访记录 疾病防控" data-demo="0">
+              <div class="cell-sw"><button class="switch on" onclick="toggleOn(this)"></button></div>
+              <div class="cell-main">
+                <div class="nm-t"><span class="tag custom">自定义</span><span class="name">慢病随访完成率</span><span class="mod">疾病防控</span></div>
+                <div class="nm-m">随访记录 · 均值 · 完成率 · 按月 · 单位 %<span class="seg-dot">|</span><span class="dpills"><span class="dpill">机构</span></span></div>
+              </div>
+              <div class="cell-pos"><span class="pos-tag kpi" data-pos>KPI 01</span></div>
+              <div class="cell-forms">
+                <button class="chip on" onclick="pickChip(this)">KPI</button>
+                <button class="chip" onclick="pickChip(this)">柱状</button>
+                <button class="chip" onclick="pickChip(this)">折线</button>
+                <button class="chip" onclick="pickChip(this)">饼图</button>
+              </div>
+              <div class="cell-ops"><button class="op" onclick="openWiz(true)">编辑</button><button class="op del" onclick="delRow(this)">删除</button></div>
+            </div>
+
+            <div class="grp">
+              <span class="grp-t">示例指标 <i id="c-demo">4</i></span>
+              <span class="grp-sub">内置中性示例 · 只读，可删除或上屏</span>
+              <span class="grow"></span>
+              <button class="link off" id="restore" onclick="restoreDemo()">恢复已删除示例</button>
+            </div>
+
+            <div class="row picked" data-name="示例指标 A 示例分组" data-demo="1">
+              <div class="cell-sw"><button class="switch on" onclick="toggleOn(this)"></button></div>
+              <div class="cell-main">
+                <div class="nm-t"><span class="tag demo">示例</span><span class="name">示例指标 A</span><span class="mod">示例分组</span></div>
+                <div class="nm-m">单位 人 · 近 12 个月<span class="seg-dot">|</span><span class="dpills"><span class="dpill">区域</span></span></div>
+              </div>
+              <div class="cell-pos"><span class="pos-tag" data-pos>图表 02</span></div>
+              <div class="cell-forms">
+                <button class="chip" onclick="pickChip(this)">KPI</button><button class="chip on" onclick="pickChip(this)">柱状</button><button class="chip" onclick="pickChip(this)">折线</button><button class="chip" onclick="pickChip(this)">饼图</button>
+              </div>
+              <div class="cell-ops"><button class="op del" onclick="delRow(this)">删除</button></div>
+            </div>
+
+            <div class="row picked" data-name="示例指标 B 示例分组" data-demo="1">
+              <div class="cell-sw"><button class="switch on" onclick="toggleOn(this)"></button></div>
+              <div class="cell-main">
+                <div class="nm-t"><span class="tag demo">示例</span><span class="name">示例指标 B</span><span class="mod">示例分组</span></div>
+                <div class="nm-m">单位 % · 近 12 个月<span class="seg-dot">|</span><span class="dpills"><span class="dpill">区域</span></span></div>
+              </div>
+              <div class="cell-pos"><span class="pos-tag" data-pos>图表 03</span></div>
+              <div class="cell-forms">
+                <button class="chip" onclick="pickChip(this)">KPI</button><button class="chip" onclick="pickChip(this)">柱状</button><button class="chip on" onclick="pickChip(this)">折线</button><button class="chip" onclick="pickChip(this)">饼图</button>
+              </div>
+              <div class="cell-ops"><button class="op del" onclick="delRow(this)">删除</button></div>
+            </div>
+
+            <div class="row picked" data-name="示例指标 C 示例分组" data-demo="1">
+              <div class="cell-sw"><button class="switch on" onclick="toggleOn(this)"></button></div>
+              <div class="cell-main">
+                <div class="nm-t"><span class="tag demo">示例</span><span class="name">示例指标 C</span><span class="mod">示例分组</span></div>
+                <div class="nm-m">单位 次 · 近 12 个月<span class="seg-dot">|</span><span class="dpills"><span class="dpill">机构</span></span></div>
+              </div>
+              <div class="cell-pos"><span class="pos-tag" data-pos>图表 04</span></div>
+              <div class="cell-forms">
+                <button class="chip" onclick="pickChip(this)">KPI</button><button class="chip" onclick="pickChip(this)">柱状</button><button class="chip" onclick="pickChip(this)">折线</button><button class="chip on" onclick="pickChip(this)">饼图</button>
+              </div>
+              <div class="cell-ops"><button class="op del" onclick="delRow(this)">删除</button></div>
+            </div>
+
+            <div class="row" data-name="示例指标 D 示例分组" data-demo="1">
+              <div class="cell-sw"><button class="switch" onclick="toggleOn(this)"></button></div>
+              <div class="cell-main">
+                <div class="nm-t"><span class="tag demo">示例</span><span class="name">示例指标 D</span><span class="mod">示例分组</span></div>
+                <div class="nm-m">单位 人 · 近 12 个月<span class="seg-dot">|</span><span class="dpills"><span class="dpill">年龄段</span></span></div>
+              </div>
+              <div class="cell-pos"><span class="pos-none" data-pos>未上屏</span></div>
+              <div class="cell-forms">
+                <button class="chip" onclick="pickChip(this)">KPI</button><button class="chip" onclick="pickChip(this)">柱状</button><button class="chip" onclick="pickChip(this)">折线</button><button class="chip" onclick="pickChip(this)">饼图</button>
+              </div>
+              <div class="cell-ops"><button class="op del" onclick="delRow(this)">删除</button></div>
+            </div>
+
+            <div class="empty" id="empty" style="display:none">没有匹配的指标</div>
+          </div>
+          <div class="lfoot">
+            <span id="lf-sum">共 6 个指标 · 上屏 5 个</span><span class="grow"></span>
+            <span>位次不够？去「布局配置」调整图表位 / KPI 位</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 钻取：维度计算 -->
+      <section class="pane" id="pane-wiz">
+        <div class="crumb">
+          <button onclick="backToList()">指标管理</button><span class="sep">/</span>
+          <span class="cur" id="wiz-title">新建指标</span>
+          <span style="flex:1"></span>
+          <span style="font-size:10.5px;color:#4d6b84">维度计算 · 保存后自动上屏</span>
+        </div>
+
+        <div class="stepper">
+          <div class="stp on" data-s="1" onclick="goStep(1)"><span class="n">1</span>选事实表</div>
+          <div class="stp" data-s="2" onclick="goStep(2)"><span class="n">2</span>标字段角色</div>
+          <div class="stp" data-s="3" onclick="goStep(3)"><span class="n">3</span>定聚合方式</div>
+          <div class="stp" data-s="4" onclick="goStep(4)"><span class="n">4</span>时间粒度</div>
+          <div class="stp" data-s="5" onclick="goStep(5)"><span class="n">5</span>真算预览</div>
+        </div>
+
+        <div class="wiz-body">
+          <div class="wiz-cols">
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div class="card step" data-step="1">
+                <h4>第 1 步 · 选事实表</h4>
+                <div class="form-row"><label>事实表</label>
+                  <select class="inp"><option>门诊明细（8,240 行）</option><option>随访记录（3,120 行）</option><option>疫苗库存（1,120 行）</option></select>
+                </div>
+                <div class="form-row"><label>指标名称</label><input class="inp" placeholder="例如：各区域就诊人次"></div>
+                <div class="form-row"><label>单位</label>
+                  <input class="inp" style="max-width:140px" placeholder="人 / % / 次">
+                  <label style="width:44px;text-align:right">模块</label>
+                  <input class="inp" style="max-width:200px" value="综合管理">
+                </div>
+                <div style="margin-top:12px;border-top:1px solid #12293f;padding-top:10px">
+                  <div style="font-size:10.5px;color:#5d7c93;margin-bottom:6px">数据预览 · 门诊明细（前 3 行）</div>
+                  <table class="ds-tbl">
+                    <thead><tr><th>区域</th><th>就诊日期</th><th>机构</th><th>就诊人次</th></tr></thead>
+                    <tbody>
+                      <tr><td>南山区</td><td>2026-01-04</td><td>区人民医院</td><td>1,842</td></tr>
+                      <tr><td>南山区</td><td>2026-01-04</td><td>社康中心</td><td>964</td></tr>
+                      <tr><td>福田区</td><td>2026-01-04</td><td>区中医院</td><td>1,120</td></tr>
+                      <tr><td>罗湖区</td><td>2026-01-05</td><td>区妇幼保健院</td><td>876</td></tr>
+                      <tr><td>宝安区</td><td>2026-01-05</td><td>区人民医院</td><td>1,530</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="hintline">名称会显示在指标清单与大屏卡片标题上；单位参与数值格式化。</div>
+              </div>
+
+              <div class="card step" data-step="2" style="display:none">
+                <h4>第 2 步 · 标字段角色<span class="hint">导入时已自动推断，可在右侧修正</span></h4>
+                <table class="roles">
+                  <thead><tr><th style="width:28%">字段</th><th style="width:30%">角色</th><th>说明</th></tr></thead>
+                  <tbody>
+                    <tr><td>区域</td><td><select><option>分类维度</option><option>时间</option><option>度量</option></select></td><td style="color:#4d6b84">6 个类目</td></tr>
+                    <tr><td>就诊日期</td><td><select><option>时间</option><option>分类维度</option><option>度量</option></select></td><td style="color:#4d6b84">按粒度归桶</td></tr>
+                    <tr><td>机构</td><td><select><option>分类维度</option><option>时间</option><option>度量</option></select></td><td style="color:#4d6b84">18 个类目</td></tr>
+                    <tr><td>就诊人次</td><td><select><option>度量</option><option>分类维度</option><option>时间</option></select></td><td style="color:#80cbc4">数值列</td></tr>
+                    <tr><td>费用</td><td><select><option>度量</option><option>分类维度</option><option>时间</option></select></td><td style="color:#80cbc4">数值列</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="card step" data-step="3" style="display:none">
+                <h4>第 3 步 · 定聚合方式</h4>
+                <div class="form-row"><label>度量字段</label>
+                  <select class="inp" style="max-width:240px"><option>就诊人次</option><option>费用</option></select>
+                  <label style="width:60px;text-align:right">汇总</label>
+                  <select class="inp" style="max-width:120px"><option>求和</option><option>均值</option><option>计数</option></select>
+                </div>
+                <div class="form-row" style="align-items:flex-start">
+                  <label style="padding-top:5px">统计维度</label>
+                  <div style="flex:1;display:flex;gap:7px;flex-wrap:wrap">
+                    <button class="chip on">区域</button><button class="chip on">月份</button>
+                    <button class="chip">机构</button><button class="chip dimmed">患者编号</button>
+                  </div>
+                </div>
+                <div class="form-row"><label>图表样式</label>
+                  <select class="inp" style="max-width:240px"><option>分组柱（2 维）</option><option>多系列折线（2 维）</option><option>旭日（2 维）</option></select>
+                  <span style="font-size:10.5px;color:#4d6b84">按 2 个维度自动过滤</span>
+                </div>
+                <div class="hintline">维度最多 2 个；类目超过 30 的字段会被标为「超限」并禁用。</div>
+              </div>
+
+              <div class="card step" data-step="4" style="display:none">
+                <h4>第 4 步 · 时间粒度与范围</h4>
+                <div class="form-row"><label>时间列</label><span style="font-size:12px;color:#b7cddd">就诊日期</span></div>
+                <div class="form-row"><label>归桶粒度</label>
+                  <select class="inp" style="max-width:140px"><option>按月</option><option>按日</option><option>按年</option></select>
+                  <span style="font-size:10.5px;color:#4d6b84">与字段真实取值自动匹配</span>
+                </div>
+                <div class="form-row"><label>数据范围</label><span style="font-size:12px;color:#b7cddd">8,240 行全量参与计算</span>
+                  <span style="font-size:10.5px;color:#4d6b84">（单文件离线原型，不做行级筛选）</span>
+                </div>
+              </div>
+
+              <div class="card step" data-step="5" style="display:none">
+                <h4>第 5 步 · 真算预览<span class="hint">各区域就诊人次 · 求和 · 参与 8,240 行</span></h4>
+                <table class="ds-tbl tbl-narrow">
+                  <thead><tr><th style="width:30%">区域</th><th style="width:30%">月份</th><th>求和值（人）</th></tr></thead>
+                  <tbody>
+                    <tr><td>南山区</td><td>2026-01</td><td>128,430</td></tr>
+                    <tr><td>南山区</td><td>2026-02</td><td>114,920</td></tr>
+                    <tr><td>福田区</td><td>2026-01</td><td>96,510</td></tr>
+                    <tr><td>福田区</td><td>2026-02</td><td>88,270</td></tr>
+                  </tbody>
+                </table>
+                <div class="hintline">仅展示前 20 组，出图使用全部 18 组。</div>
+              </div>
+            </div>
+
+            <div style="position:sticky;top:0;display:flex;flex-direction:column;gap:12px">
+              <div class="card">
+                <h4>配置摘要<span class="hint">随步骤高亮</span></h4>
+                <div class="sum-row act" data-step="1"><span>事实表</span><b>门诊明细</b></div>
+                <div class="sum-row" data-step="1"><span>名称</span><b id="sum-name">未填写</b></div>
+                <div class="sum-row" data-step="2"><span>维度</span><b>区域 × 月份</b></div>
+                <div class="sum-row" data-step="3"><span>度量</span><b>就诊人次 · 求和</b></div>
+                <div class="sum-row" data-step="4"><span>粒度</span><b>按月 · 全量 8,240 行</b></div>
+                <div class="sum-row" data-step="5"><span>形式</span><b>分组柱</b></div>
+                <div class="sum-note">保存后自动上屏；展示形式可在指标管理里随时改。</div>
+              </div>
+              <div class="card">
+                <h4>上屏约束</h4>
+                <div class="sum-row"><span>图表位</span><b>已用 4 / 12</b></div>
+                <div class="sum-row"><span>KPI 位</span><b>已用 1 / 3</b></div>
+                <div class="sum-note">位次不够时到「布局配置」调整；保存时若该池已满，只保存不上屏并提示。</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="wiz-foot">
+          <button class="btn ghost" onclick="backToList()">取消</button>
+          <div class="grow"></div>
+          <button class="btn ghost" id="prev" onclick="stepMove(-1)" style="display:none">上一步</button>
+          <button class="btn primary" id="next" onclick="stepMove(1)">下一步</button>
+          <button class="btn primary" id="save" onclick="saveWiz()" style="display:none">保存并上屏</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="mfoot" id="foot">
+      <div class="meter">KPI <b id="f-kpi">1/3</b><span class="track"><span class="fill" id="bar-kpi" style="width:33%"></span></span></div>
+      <div class="meter">图表 <b id="f-chart">4/12</b><span class="track"><span class="fill" id="bar-chart" style="width:33%"></span></span></div>
+      <div class="grow"></div>
+      <button class="btn ghost" onclick="toast('（演示）取消并关闭')">取消</button>
+      <button class="btn primary" onclick="toast('已确认 5 个上屏指标')">确认选择</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+var WIZ_STEP = 1;
+function pad(n){ return n < 10 ? '0' + n : '' + n; }
+function toast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(function(){ t.classList.remove('show'); }, 1900);
+}
+function tab(name){
+  document.querySelectorAll('.mtab').forEach(function(b){ b.classList.toggle('on', b.dataset.tab === name); });
+  ['text','data','ind','wiz'].forEach(function(k){
+    var p = document.getElementById('pane-' + k);
+    if (p) p.classList.toggle('on', k === name);
+  });
+  document.getElementById('foot').style.display = (name === 'ind') ? 'flex' : 'none';
+}
+function setMenus(n, btn){
+  btn.parentNode.querySelectorAll('button').forEach(function(b){ b.classList.remove('on'); });
+  btn.classList.add('on');
+  var box = document.getElementById('menu-names');
+  var defs = ['综合态势','疾病防控','医疗资源','卫生应急','健康服务'];
+  box.innerHTML = '';
+  for (var i = 0; i < n; i++){
+    var inp = document.createElement('input');
+    inp.className = 'inp'; inp.value = defs[i] || ('菜单' + (i + 1));
+    inp.oninput = syncMenu; box.appendChild(inp);
+  }
+  syncMenu();
+}
+function syncMenu(){
+  var pv = document.getElementById('pv-menus');
+  pv.innerHTML = '';
+  document.querySelectorAll('#menu-names .inp').forEach(function(inp, i){
+    var d = document.createElement('div');
+    d.className = 'pv-menu' + (i === 0 ? ' on' : '');
+    d.textContent = inp.value || ('菜单' + (i + 1));
+    pv.appendChild(d);
+  });
+}
+function counts(){
+  var chart = 0, kpi = 0, on = 0, custom = 0, demo = 0;
+  document.querySelectorAll('#rows .row').forEach(function(r){
+    if (r.classList.contains('gone')) return;
+    if (r.dataset.demo === '1') demo++; else custom++;
+    var pos = r.querySelector('.cell-pos');
+    var sw = r.querySelector('.switch');
+    if (!sw.classList.contains('on')){
+      if (pos) pos.innerHTML = '<span class="pos-none">未上屏</span>';
+      return;
+    }
+    on++;
+    var chip = r.querySelector('.chip.on');
+    var isKpi = chip && chip.textContent.trim() === 'KPI';
+    if (isKpi){ kpi++; if (pos) pos.innerHTML = '<span class="pos-tag kpi">KPI ' + pad(kpi) + '</span>'; }
+    else { chart++; if (pos) pos.innerHTML = '<span class="pos-tag">图表 ' + pad(chart) + '</span>'; }
+  });
+  document.getElementById('f-chart').textContent = chart + '/12';
+  document.getElementById('f-kpi').textContent = kpi + '/3';
+  document.getElementById('h-chart').textContent = chart + '/12';
+  document.getElementById('h-kpi').textContent = kpi + '/3';
+  document.getElementById('h-on').textContent = on;
+  document.getElementById('bar-chart').style.width = Math.min(100, chart / 12 * 100) + '%';
+  document.getElementById('bar-kpi').style.width = Math.min(100, kpi / 3 * 100) + '%';
+  document.getElementById('bar-kpi').classList.toggle('warn', kpi >= 3);
+  document.getElementById('c-custom').textContent = custom;
+  document.getElementById('c-demo').textContent = demo;
+  document.getElementById('tab-ind-cnt').textContent = custom + demo;
+  document.getElementById('lf-sum').textContent = '共 ' + (custom + demo) + ' 个指标 · 上屏 ' + on + ' 个';
+}
+function toggleOn(btn){
+  var row = btn.closest('.row');
+  if (btn.classList.contains('on')){
+    btn.classList.remove('on'); row.classList.remove('picked');
+    toast('已取消上屏：' + row.querySelector('.name').textContent);
+  } else {
+    btn.classList.add('on'); row.classList.add('picked');
+    toast('已上屏：' + row.querySelector('.name').textContent);
+  }
+  counts(); applyFilter();
+}
+function pickChip(chip){
+  var row = chip.closest('.row');
+  row.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('on'); });
+  chip.classList.add('on');
+  var sw = row.querySelector('.switch');
+  if (!sw.classList.contains('on')){
+    sw.classList.add('on'); row.classList.add('picked');
+    toast('点样式即上屏：' + row.querySelector('.name').textContent);
+  }
+  counts();
+}
+function delRow(btn){
+  var row = btn.closest('.row');
+  var name = row.querySelector('.name').textContent;
+  row.classList.add('gone');
+  if (row.dataset.demo === '1'){
+    document.getElementById('restore').classList.remove('off');
+    toast('已移除示例「' + name + '」，可点「恢复已删除示例」找回');
+  } else {
+    toast('已删除指标「' + name + '」，对应上屏卡片一并移除');
+  }
+  counts(); applyFilter();
+}
+function restoreDemo(){
+  var btn = document.getElementById('restore');
+  if (btn.classList.contains('off')) return;
+  document.querySelectorAll('#rows .row[data-demo="1"]').forEach(function(r){ r.classList.remove('gone'); });
+  btn.classList.add('off');
+  toast('已恢复 4 条示例指标');
+  counts(); applyFilter();
+}
+function setOnly(only, btn){
+  btn.parentNode.querySelectorAll('button').forEach(function(b){ b.classList.remove('on'); });
+  btn.classList.add('on'); window.__only = only; applyFilter();
+}
+function applyFilter(){
+  var q = (document.getElementById('q').value || '').trim().toLowerCase();
+  var shown = 0;
+  document.querySelectorAll('#rows .row').forEach(function(r){
+    var hit = !r.classList.contains('gone');
+    if (hit && q && r.dataset.name.toLowerCase().indexOf(q) < 0) hit = false;
+    if (hit && window.__only && !r.querySelector('.switch').classList.contains('on')) hit = false;
+    r.style.display = hit ? '' : 'none';
+    if (hit) shown++;
+  });
+  document.getElementById('empty').style.display = shown ? 'none' : 'block';
+}
+function openWiz(isEdit){
+  document.getElementById('wiz-title').textContent = isEdit ? '编辑指标' : '新建指标';
+  WIZ_STEP = 1; goStep(1); tab('wiz');
+}
+function backToList(){ tab('ind'); }
+function goStep(n){
+  WIZ_STEP = Math.max(1, Math.min(5, n));
+  document.querySelectorAll('.stp').forEach(function(s){
+    var k = Number(s.dataset.s);
+    s.classList.toggle('on', k === WIZ_STEP);
+    s.classList.toggle('done', k < WIZ_STEP);
+  });
+  document.querySelectorAll('.step').forEach(function(p){
+    p.style.display = (Number(p.dataset.step) === WIZ_STEP) ? 'block' : 'none';
+  });
+  document.getElementById('prev').style.display = WIZ_STEP > 1 ? 'inline-block' : 'none';
+  document.getElementById('next').style.display = WIZ_STEP < 5 ? 'inline-block' : 'none';
+  document.getElementById('save').style.display = WIZ_STEP === 5 ? 'inline-block' : 'none';
+  document.querySelectorAll('.sum-row[data-step]').forEach(function(r){
+    r.classList.toggle('act', r.dataset.step === String(WIZ_STEP));
+  });
+}
+function stepMove(d){ goStep(WIZ_STEP + d); }
+function saveWiz(){
+  toast('已保存指标并上屏（受图表位 / KPI 位约束）');
+  tab('ind'); counts();
+}
+var ti = document.getElementById('in-title');
+if (ti) ti.addEventListener('input', function(){
+  document.getElementById('st-title').textContent = this.value || '（未填）';
+});
+counts(); applyFilter();
+</script>
+</body>
+</html>

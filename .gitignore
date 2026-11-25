@@ -1,0 +1,19 @@
+# 历史快照不入库（需要时查 git 历史）
+*.bak-*.html
+*.bak-*.md
+*.bak
+
+# 系统与编辑器
+Thumbs.db
+desktop.ini
+.DS_Store
+.idea/
+.vscode/
+
+# 依赖与日志
+node_modules/
+*.log
+
+# 本地临时
+_tmp/
+.tmp/
